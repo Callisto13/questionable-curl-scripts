@@ -4,6 +4,7 @@ BUG_DIR="/tmp/bug_counts"
 BUG_FILE=output.csv
 
 mkdir -p "$BUG_DIR"
+rm $BUG_FILE
 
 trap 'rm -rf $BUG_DIR' EXIT
 
@@ -22,16 +23,17 @@ for i in {1..14}; do
    count=$(jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | length' < "$BUG_DIR/page$i.json" | wc -l)
    total=$((total+count))
 
-   ownerFoundCount=$(jq -r '.[] |  select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.author_association == "MEMBER") | length' < "$BUG_DIR/page$i.json"  | wc -l)
+   ownerFoundCount=$(jq -r '.[] |  select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.user.login == "errordeveloper" or .user.login == "martina-if" or .user.login == "Callisto13" or .user.login == "aclevername" or .user.login == "cPu1" or .user.login == "michaelbeaumont") | length' < "$BUG_DIR/page$i.json"  | wc -l)
    ownerFound=$((ownerFound+ownerFoundCount))
 
-   communityFoundCount=$(jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.author_association != "MEMBER") | length' < "$BUG_DIR/page$i.json" | wc -l)
+   communityFoundCount=$(jq -r '.[] |  select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.user.login != "errordeveloper" and .user.login != "martina-if" and .user.login != "Callisto13" and .user.login != "aclevername" and .user.login != "cPu1" and .user.login != "michaelbeaumont") | length' < "$BUG_DIR/page$i.json"  | wc -l)
    communityFound=$((communityFound+communityFoundCount))
 
    countClosed=$(jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.state == "closed") | length' < "$BUG_DIR/page$i.json" | wc -l)
    closed=$((closed+countClosed))
 
-   jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | [.number,.created_at,.title,.state,.closed_at,.author_association] | @csv' < "$BUG_DIR/page$i.json" >> "$BUG_FILE"
+   jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | [.number,.created_at,.title,.state,.closed_at] | @csv' < "$BUG_DIR/page$i.json" >> "$BUG_FILE"
+   # jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | [.number,.created_at,.title,.state,.closed_at,.author_association] | @csv' < "$BUG_DIR/page$i.json" >> "$BUG_FILE"
 done
 
 echo "\"total\",\"$total\""
