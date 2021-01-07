@@ -10,6 +10,7 @@ trap 'rm -rf $BUG_DIR' EXIT
 total=0
 ownerFound=0
 communityFound=0
+closed=0
 
 for i in {1..14}; do
    curl \
@@ -27,9 +28,13 @@ for i in {1..14}; do
    communityFoundCount=$(jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.author_association != "MEMBER") | length' < "$BUG_DIR/page$i.json" | wc -l)
    communityFound=$((communityFound+communityFoundCount))
 
-   jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | [.number,.created_at,.title,.author_association] | @csv' < "$BUG_DIR/page$i.json" >> "$BUG_FILE"
+   countClosed=$(jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | select(.state == "closed") | length' < "$BUG_DIR/page$i.json" | wc -l)
+   closed=$((closed+countClosed))
+
+   jq -r '.[] | select(.pull_request == null) | select(.labels[].name == "kind/bug") | select(.created_at | contains("2020")) | [.number,.created_at,.title,.state,.closed_at,.author_association] | @csv' < "$BUG_DIR/page$i.json" >> "$BUG_FILE"
 done
 
 echo "\"total\",\"$total\""
 echo "\"ownerFound\",\"$ownerFound\""
 echo "\"communityFound\",\"$communityFound\""
+echo "\"ofWhichClosed\",\"$closed\""
