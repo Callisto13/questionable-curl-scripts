@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ISSUE_DIR="/tmp/issues"
+TMP_DIR="/tmp/issues"
 YEAR=2021
 MONTH=09
 USERNAME=
@@ -22,38 +22,40 @@ EOF
 }
 
 curl_repo() {
-   echo "Fetching issue data for $1, saving to $ISSUE_DIR"
-   AUTH=
+   local issue_dir="$TMP_DIR/$1"
+   echo "Fetching issue data for $1, saving to $issue_dir. (May take some time.)"
+   local auth=
    if [[ -z "$TOKEN" || -z "$USERNAME" ]]; then
       echo "TOKEN variable not set. Recommend setting a github token and username to avoid API rate limiting. See usage -h for more."
    else
-      AUTH="-u $USERNAME:$TOKEN"
+      auth="-u $USERNAME:$TOKEN"
    fi
 
    for i in $(seq 1 "$2"); do
       curl -s \
-         "$AUTH" \
+         "$auth" \
          -H "Accept: application/vnd.github.v3+json" \
          "https://api.github.com/repos/weaveworks/$1/issues?state=closed&page=$i&per_page=100" \
-         > "$ISSUE_DIR/page$i.json"
+         > "$issue_dir/page$i.json"
    done
 }
 
 parse_issues() {
+   local issue_dir="$TMP_DIR/$1"
    local out_dir="$1"
    local help_out="$out_dir/helps.csv"
    local bug_out="$out_dir/bugs.csv"
    local feature_out="$out_dir/features.csv"
    local zip_file="$YEAR-$MONTH-$1.zip"
-   rm "$help_out" "$feature_out" "$bug_out" || true
+   rm -f "$help_out" "$feature_out" "$bug_out" || true
 
    echo "Parsing issue data for $1, zipping to ./$zip_file"
 
-   files=$(find $ISSUE_DIR -type f | wc -l)
+   files=$(find "$issue_dir" -type f | wc -l)
    for i in $(seq 1 "$files"); do
-      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/bug\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$ISSUE_DIR/page$i.json" >> "$bug_out"
-      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/help\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$ISSUE_DIR/page$i.json" >> "$help_out"
-      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/feature\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$ISSUE_DIR/page$i.json" >> "$feature_out"
+      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/bug\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$issue_dir/page$i.json" >> "$bug_out"
+      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/help\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$issue_dir/page$i.json" >> "$help_out"
+      jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/feature\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$issue_dir/page$i.json" >> "$feature_out"
    done
 
    zip "$zip_file" "$1"
@@ -86,9 +88,9 @@ do
   esac
 done
 
-
 if [[ -z "$SKIP_CLEANUP" ]]; then
-   rm -rf "$ISSUE_DIR" && (mkdir -p "$ISSUE_DIR" || true)
+   rm -rf "$TMP_DIR"
+   mkdir -p "$TMP_DIR"/{eksctl,pctl,profiles}
 
    curl_repo eksctl 100
    curl_repo pctl 50
