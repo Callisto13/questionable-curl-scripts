@@ -58,7 +58,7 @@ parse_issues() {
       jq -r ".[] | select(.pull_request == null) | select(.labels[].name == \"kind/feature\") | select(.closed_at | contains(\"$YEAR-$MONTH\")) | [.number,.closed_at] | @csv" < "$issue_dir/page$i.json" >> "$feature_out"
    done
 
-   zip "$zip_file" "$1"
+   zip "$zip_file" "$1"/*
    echo "Done."
 }
 
